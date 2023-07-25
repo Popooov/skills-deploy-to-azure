@@ -12,7 +12,7 @@ env:
 jobs:
   build:
     if: contains(github.event.pull_request.labels.*.name, 'stage')
-    
+
     runs-on: ubuntu-latest
 
     steps:
@@ -20,12 +20,12 @@ jobs:
       - name: npm install and build webpack
         run: |
           npm install
-          npm build
+          npm run build
       - uses: actions/upload-artifact@v3
         with:
           name: webpack artifacts
           path: public/
-          
+
   Build-Docker-Image:
     runs-on: ubuntu-latest
     needs: build
@@ -33,14 +33,20 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-        
+
       - name: Download built artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: webpack artifacts
+          path: public
+
+      - name: Log in to GHCR
         uses: docker/login-action@v2
         with:
           registry: ${{ env.IMAGE_REGISTRY_URL }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v4
@@ -48,7 +54,7 @@ jobs:
           images: ${{env.IMAGE_REGISTRY_URL}}/${{ github.repository }}/${{env.DOCKER_IMAGE_NAME}}
           tags: |
             type=sha,format=long,prefix=
-            
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
@@ -56,7 +62,7 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          
+
   Deploy-to-Azure:
     runs-on: ubuntu-latest
     needs: Build-Docker-Image
